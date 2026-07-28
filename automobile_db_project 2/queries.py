@@ -97,6 +97,8 @@ def sales_trends_by_brand(conn=None, group_by="month"):
     # each is easy for a marketing user to read on its own.
 
     # (a) overall trend, by brand and time bucket
+    # Handout asks for "the past 3 years", so every one of the three
+    # result sets below is filtered to sale_date >= 3 years ago.
     cur.execute(f"""
         SELECT b.brand_name, {bucket_expr} AS time_bucket,
                COUNT(*) AS units_sold, SUM(s.sale_price) AS total_dollars
@@ -104,6 +106,7 @@ def sales_trends_by_brand(conn=None, group_by="month"):
         JOIN vehicles v ON s.vin = v.vin
         JOIN models m ON v.model_id = m.model_id
         JOIN brands b ON m.brand_id = b.brand_id
+        WHERE s.sale_date >= CURDATE() - INTERVAL 3 YEAR
         GROUP BY b.brand_name, time_bucket
         ORDER BY b.brand_name, time_bucket
     """)
@@ -118,6 +121,7 @@ def sales_trends_by_brand(conn=None, group_by="month"):
         JOIN models m ON v.model_id = m.model_id
         JOIN brands b ON m.brand_id = b.brand_id
         JOIN customers c ON s.customer_id = c.customer_id
+        WHERE s.sale_date >= CURDATE() - INTERVAL 3 YEAR
         GROUP BY b.brand_name, time_bucket, c.gender
         ORDER BY b.brand_name, time_bucket
     """)
@@ -140,6 +144,7 @@ def sales_trends_by_brand(conn=None, group_by="month"):
         JOIN models m ON v.model_id = m.model_id
         JOIN brands b ON m.brand_id = b.brand_id
         JOIN customers c ON s.customer_id = c.customer_id
+        WHERE s.sale_date >= CURDATE() - INTERVAL 3 YEAR
         GROUP BY b.brand_name, time_bucket, income_range
         ORDER BY b.brand_name, time_bucket
     """)

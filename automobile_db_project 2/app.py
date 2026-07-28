@@ -22,16 +22,14 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    """Simple landing page linking to the three web interfaces."""
+    """Landing page linking to the three web interfaces."""
     return render_template("home.html")
 
 
 @app.route("/locator", methods=["GET", "POST"])
 def locator():
-    # Vehicle locator: a dealer searches for a vehicle matching a
-    # customer's request, locally and at nearby dealers. Every
-    # search is logged to locator_inquiries so marketing can review
-    # them for product planning later.
+    # GET just renders the empty form; the query only runs on POST,
+    # so results stays None until a dealer actually submits.
     results = None
     if request.method == "POST":
         brand = request.form.get("brand", "").strip()
@@ -54,6 +52,10 @@ def locator():
             LEFT JOIN dealers d ON v.current_dealer_id = d.dealer_id
             WHERE v.vin NOT IN (SELECT vin FROM sales)
         """
+        # Each field is optional, so the WHERE clause and its params
+        # list grow together, in lockstep, only for fields the dealer
+        # actually filled in — an empty field means "don't filter on
+        # this", not "match empty string".
         params = []
         if brand:
             sql += " AND b.brand_name LIKE %s"
@@ -133,12 +135,18 @@ def search():
 
 @app.route("/marketing")
 def marketing():
-    # Marketing/OLAP reports: this is where the six required
-    # queries actually get displayed.
+    # group_by is arbitrary query-string input, and queries.py keys
+    # a dict on it to pick a DATE_FORMAT() expression — an unchecked
+    # value would KeyError instead of falling back cleanly, so it's
+    # whitelisted here before ever reaching that lookup.
+    group_by = request.args.get("group_by", "month")
+    if group_by not in ("year", "month", "week"):
+        group_by = "month"
+
     conn = get_connection()
     top_dollar = queries.top_brands_by_dollar_sales(conn)
     top_units = queries.top_brands_by_unit_sales(conn)
-    trends = queries.sales_trends_by_brand(conn, group_by="month")
+    trends = queries.sales_trends_by_brand(conn, group_by=group_by)
     recall = queries.find_affected_vehicles(conn)
     conv_month = queries.best_month_for_convertibles(conn)
     inventory = queries.longest_avg_inventory_time(conn)
@@ -148,10 +156,44 @@ def marketing():
         top_dollar=top_dollar,
         top_units=top_units,
         trends=trends,
+        group_by=group_by,
         recall=recall,
         conv_month=conv_month,
         inventory=inventory,
     )
+@app.route("/add-sale", methods=["GET", "POST"])
+def add_sale():
+    message = None
+    if request.method == "POST":
+        vin = request.form.get("vin").strip()
+        dealer_id = request.form.get("dealer_id")
+        customer_id = request.form.get("customer_id")
+        sale_date = request.form.get("sale_date")
+        sale_price = request.form.get("sale_price")
+
+        conn = get_connection()
+        try:
+            cur = conn.cursor()
+            cur.execute(
+                """INSERT INTO sales (vin, dealer_id, customer_id, sale_date, sale_price)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (vin, dealer_id, customer_id, sale_date, sale_price)
+            )
+            # locator/search treat a vehicle as unsold via NOT IN
+            # (SELECT vin FROM sales); the row just inserted there
+            # already makes that true, so this only needs to drop
+            # the now-stale dealer assignment for consistency.
+            cur.execute("UPDATE vehicles SET current_dealer_id = NULL WHERE vin = %s", (vin,))
+            conn.commit()
+            message = f"Success: Sale recorded for VIN {vin}!"
+        except Exception as e:
+            conn.rollback()
+            message = f"Error recording sale: {e}"
+        finally:
+            cur.close()
+            conn.close()
+
+    return render_template("add_sale.html", message=message)
 
 
 if __name__ == "__main__":

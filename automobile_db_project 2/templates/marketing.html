@@ -10,6 +10,10 @@
         <h3>By Dollar Sales</h3>
         <table>
             <tr><th>Brand</th><th>Total $</th><th>Units</th></tr>
+            {#- for/else: else fires only when the query returned zero
+               rows, distinguishing "nothing sold yet" from a table
+               that's merely still loading. Same pattern recurs below
+               wherever a result set can legitimately be empty. #}
             {% for row in top_dollar %}
             <tr><td>{{ row.brand_name }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td><td>{{ row.units_sold }}</td></tr>
             {% else %}
@@ -31,10 +35,23 @@
 </div>
 <p class="note">Note: these two rankings can legitimately disagree — a brand can sell fewer, pricier vehicles and still lead on dollars while trailing on units.</p>
 
-<h2>3. Sales Trends by Brand (monthly)</h2>
+<h2>3. Sales Trends by Brand (past 3 years)</h2>
+<p class="note">
+    View by:
+    {#- One control instead of three near-identical links; onchange
+       navigates immediately, so no separate submit button. Each
+       option's value is a full URL, not just "year"/"month"/"week",
+       since location assignment needs somewhere to actually go. #}
+    <select onchange="location=this.value">
+        <option value="{{ url_for('marketing', group_by='year') }}" {% if group_by == 'year' %}selected{% endif %}>Year</option>
+        <option value="{{ url_for('marketing', group_by='month') }}" {% if group_by == 'month' %}selected{% endif %}>Month</option>
+        <option value="{{ url_for('marketing', group_by='week') }}" {% if group_by == 'week' %}selected{% endif %}>Week</option>
+    </select>
+    &mdash; currently showing: <strong>{{ group_by }}</strong>
+</p>
 <h3>Overall</h3>
 <table>
-    <tr><th>Brand</th><th>Month</th><th>Units</th><th>Total $</th></tr>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Units</th><th>Total $</th></tr>
     {% for row in trends.overall %}
     <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
     {% else %}
@@ -44,7 +61,7 @@
 
 <h3>Broken Out by Gender</h3>
 <table>
-    <tr><th>Brand</th><th>Month</th><th>Gender</th><th>Units</th><th>Total $</th></tr>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Gender</th><th>Units</th><th>Total $</th></tr>
     {% for row in trends.by_gender %}
     <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.gender }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
     {% endfor %}
@@ -52,7 +69,7 @@
 
 <h3>Broken Out by Income Range</h3>
 <table>
-    <tr><th>Brand</th><th>Month</th><th>Income Range</th><th>Units</th><th>Total $</th></tr>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Income Range</th><th>Units</th><th>Total $</th></tr>
     {% for row in trends.by_income %}
     <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.income_range }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
     {% endfor %}
