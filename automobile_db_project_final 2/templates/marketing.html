@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Marketing Reports{% endblock %}
+{% block content %}
+<h1>Marketing / OLAP Reports</h1>
+<p><em>Each section below corresponds to one of the six required client queries from the project handout.</em></p>
+
+<h2>1 &amp; 2. Top Brands — Past Year</h2>
+<div class="report-pair">
+    <div>
+        <h3>By Dollar Sales</h3>
+        <table>
+            <tr><th>Brand</th><th>Total $</th><th>Units</th></tr>
+            {#- for/else: else fires only when the query returned zero
+               rows, distinguishing "nothing sold yet" from a table
+               that's merely still loading. Same pattern recurs below
+               wherever a result set can legitimately be empty. #}
+            {% for row in top_dollar %}
+            <tr><td>{{ row.brand_name }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td><td>{{ row.units_sold }}</td></tr>
+            {% else %}
+            <tr><td colspan="3"><em>No sales in the past year yet.</em></td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div>
+        <h3>By Unit Sales</h3>
+        <table>
+            <tr><th>Brand</th><th>Units</th><th>Total $</th></tr>
+            {% for row in top_units %}
+            <tr><td>{{ row.brand_name }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
+            {% else %}
+            <tr><td colspan="3"><em>No sales in the past year yet.</em></td></tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+<p class="note">Note: these two rankings can legitimately disagree — a brand can sell fewer, pricier vehicles and still lead on dollars while trailing on units.</p>
+
+<h2>3. Sales Trends by Brand (past 3 years)</h2>
+<p class="note">
+    View by:
+    {#- One control instead of three near-identical links; onchange
+       navigates immediately, so no separate submit button. Each
+       option's value is a full URL, not just "year"/"month"/"week",
+       since location assignment needs somewhere to actually go. #}
+    <select onchange="location=this.value">
+        <option value="{{ url_for('marketing', group_by='year') }}" {% if group_by == 'year' %}selected{% endif %}>Year</option>
+        <option value="{{ url_for('marketing', group_by='month') }}" {% if group_by == 'month' %}selected{% endif %}>Month</option>
+        <option value="{{ url_for('marketing', group_by='week') }}" {% if group_by == 'week' %}selected{% endif %}>Week</option>
+    </select>
+    &mdash; currently showing: <strong>{{ group_by }}</strong>
+</p>
+<h3>Overall</h3>
+<table>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Units</th><th>Total $</th></tr>
+    {% for row in trends.overall %}
+    <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
+    {% else %}
+    <tr><td colspan="4"><em>No sales recorded yet.</em></td></tr>
+    {% endfor %}
+</table>
+
+<h3>Broken Out by Gender</h3>
+<table>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Gender</th><th>Units</th><th>Total $</th></tr>
+    {% for row in trends.by_gender %}
+    <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.gender }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
+    {% endfor %}
+</table>
+
+<h3>Broken Out by Income Range</h3>
+<table>
+    <tr><th>Brand</th><th>{{ group_by|capitalize }}</th><th>Income Range</th><th>Units</th><th>Total $</th></tr>
+    {% for row in trends.by_income %}
+    <tr><td>{{ row.brand_name }}</td><td>{{ row.time_bucket }}</td><td>{{ row.income_range }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
+    {% endfor %}
+</table>
+
+<h2>4. Recall Trace — Getrag Transmissions</h2>
+<p class="note">Default window shown; the DBA can call <code>queries.find_affected_vehicles()</code> directly with different supplier/part/date arguments for a different recall scenario.</p>
+<table>
+    <tr><th>VIN</th><th>Installed</th><th>Customer</th><th>Phone</th><th>Sale Date</th></tr>
+    {% for row in recall %}
+    <tr>
+        <td>{{ row.vin }}</td>
+        <td>{{ row.install_date }}</td>
+        <td>{{ row.customer_name or "Unsold — still in inventory" }}</td>
+        <td>{{ row.customer_phone or "—" }}</td>
+        <td>{{ row.sale_date or "—" }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5"><em>No affected vehicles in the current window.</em></td></tr>
+    {% endfor %}
+</table>
+
+<h2>5. Best Month(s) for Convertible Sales</h2>
+<table>
+    <tr><th>Month</th><th>Units Sold</th><th>Total $</th></tr>
+    {% for row in conv_month %}
+    <tr><td>{{ row.month_name }}</td><td>{{ row.units_sold }}</td><td>{{ "%.2f"|format(row.total_dollars) }}</td></tr>
+    {% else %}
+    <tr><td colspan="3"><em>No convertible sales recorded yet.</em></td></tr>
+    {% endfor %}
+</table>
+
+<h2>6. Dealers with Longest Average Inventory Hold Time</h2>
+<table>
+    <tr><th>Dealer</th><th>Avg Days Held</th><th>Vehicles Sold</th></tr>
+    {% for row in inventory %}
+    <tr><td>{{ row.dealer_name }}</td><td>{{ "%.1f"|format(row.avg_days_held) }}</td><td>{{ row.vehicles_sold }}</td></tr>
+    {% else %}
+    <tr><td colspan="3"><em>No completed sales recorded yet.</em></td></tr>
+    {% endfor %}
+</table>
+<p class="note">Average is computed over SOLD vehicles only — see the design-decision comment on <code>longest_avg_inventory_time()</code> in queries.py for why still-unsold inventory is intentionally excluded.</p>
+{% endblock %}
