@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Vehicle Locator{% endblock %}
+{% block content %}
+<h1>Vehicle Locator</h1>
+<p>Dealer-facing lookup: find a vehicle matching a customer's request, in local or nearby inventory. Every search here is logged for marketing to review.</p>
+<form method="post">
+    <label>Brand: <input type="text" name="brand"></label>
+    <label>Model: <input type="text" name="model"></label>
+    <label>Color: <input type="text" name="color"></label>
+    <label>Body style: <input type="text" name="body_style"></label>
+    <button type="submit">Search</button>
+</form>
+
+{% if results %}
+<table>
+    <tr><th>VIN</th><th>Model</th><th>Color</th><th>Asking Price</th><th>Dealer</th></tr>
+    {% for r in results %}
+    <tr>
+        <td>{{ r.vin }}</td>
+        <td>{{ r.model_name }}</td>
+        <td>{{ r.color }}</td>
+        <td>{{ "%.2f"|format(r.asking_price) if r.asking_price is not none else "—" }}</td>
+        <td>{{ r.dealer_name or "In transit" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% elif results is not none %}
+<p><em>No matching unsold vehicles found nearby.</em></p>
+{% endif %}
+{% endblock %}
