@@ -45,31 +45,7 @@ this implementation.
    PowerShell/cmd for the commands below.
    </details>
 
-   <details>
-   <summary><b>Linux</b> (Debian/Ubuntu)</summary>
-
-   ```bash
-   sudo apt update
-   sudo apt install mysql-server
-   sudo systemctl start mysql
-   sudo mysql_secure_installation   # optional
-   ```
-   </details>
-
-   <details>
-   <summary>Alternative: Docker (any OS)</summary>
-
-   ```bash
-   docker run --name automobile-mysql -e MYSQL_ROOT_PASSWORD=yourpassword -p 3306:3306 -d mysql:8
-   ```
-   No local MySQL install needed — the container exposes MySQL on
-   `localhost:3306` just like a native install.
-   </details>
-
-   Verify it's running and check the version:
-   ```bash
-   mysql --version
-   ```
+   
 
 2. **Create the database:**
    ```sql
